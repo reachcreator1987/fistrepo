@@ -1,0 +1,45 @@
+// Identify language usage based on significant execution time & frequency
+UberAgentProcessData
+| where Timestamp > ago(14d)
+| where ProcessName in ("java.exe", "python.exe", "dotnet.exe", "node.exe", "go.exe", "ruby.exe", "R.exe")
+| summarize TotalRunTime = sum(Duration), ExecutionCount = count() by DeviceName, UserName, ProcessName
+| where TotalRunTime > 600 and ExecutionCount > 50 
+
+// Track IDE usage including cloud-based development environments
+| join kind=inner (
+    UberAgentProcessData
+    | where ProcessName in ("code.exe", "pycharm.exe", "intellij.exe", "rubymine.exe", "rstudio.exe", "eclipse.exe", "netbeans.exe", "aws-cloud9.exe", "azure-devops.exe", "github-codespaces.exe")
+    | summarize IDEUsageCount = count() by DeviceName, UserName
+) on DeviceName, UserName
+
+// Detect cloud-based coding through SSH, tunnels, and remote containers
+| join kind=inner (
+    UberAgentProcessData
+    | where ProcessName in ("ssh.exe", "ngrok.exe", "wsl.exe", "docker.exe", "vmware.exe", "virtualbox.exe")
+    | summarize CloudUsageCount = count() by DeviceName, UserName
+) on DeviceName, UserName
+
+// Identify the most actively used codebase location
+| join kind=inner (
+    UberAgentFileAccessData
+    | where FileExtension in (".java", ".py", ".cs", ".js", ".go", ".rb", ".R")
+    | summarize FileEditCount = count(), TopCodebaseLocation = arg_max(FilePath, FileEditCount) by DeviceName, UserName
+) on DeviceName, UserName
+
+// Check Git repository activity to confirm project interactions
+| join kind=inner (
+    UberAgentFileAccessData
+    | where FilePath contains ".git"
+    | summarize GitActivityCount = count() by DeviceName, UserName
+) on DeviceName, UserName
+
+// Combine environment variables to verify development configurations
+| join kind=inner (
+    UberAgentEnvironmentData
+    | where VariableName in ("JAVA_HOME", "PYTHONPATH", "DOTNET_ROOT", "NODE_PATH", "GOPATH", "R_LIBS")
+) on DeviceName, UserName
+
+// Compute overall development score, considering cloud-based coding factors
+| extend DevelopmentScore = (ExecutionCount + IDEUsageCount + FileEditCount + GitActivityCount + CloudUsageCount) * TotalRunTime
+| order by DevelopmentScore desc
+| project DeviceName, UserName, ProcessName as PrimaryLanguageUsed, TopCodebaseLocation, CloudUsageCount, GitActivityCount, DevelopmentScore

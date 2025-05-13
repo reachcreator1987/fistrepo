@@ -1,0 +1,9 @@
+Language,SDK,Package Management,Build,Run,Unit Testing,Debugging,Profiling,Process Name,File Associations,Environment Variables
+Java,JDK (Java Development Kit),Maven, Gradle,javac,java,JUnit, TestNG,Eclipse, IntelliJ IDEA,JProfiler, VisualVM,java.exe, javac.exe,.java, .jar, .class,JAVA_HOME, CLASSPATH
+Python,Python SDK,pip, conda,python -m py_compile,python,pytest, unittest,pdb, PyCharm,cProfile, Pyinstrument,python.exe,.py, .pyc, .pyd,PYTHONPATH, VIRTUAL_ENV
+.NET,.NET SDK,NuGet,dotnet build,dotnet run,MSTest, xUnit, NUnit,Visual Studio Debugger,PerfView, dotnet-trace,dotnet.exe,.cs, .dll, .exe,DOTNET_ROOT, COMPLUS_VERSION
+JavaScript,Node.js SDK,npm, yarn,Webpack, Babel,node,Jest, Mocha,Chrome DevTools, VS Code Debugger,Sentry Profiling, Heap Snapshot,node.exe, chrome.exe,.js, .mjs, .json,NODE_PATH, NPM_CONFIG_PREFIX
+Go,Go SDK,go get, go mod,go build,go run,go test,Delve Debugger,pprof, go tool trace,go.exe,.go, .a,GOPATH, GOROOT
+Cobolt,Cobalt SDK,Custom package management,GN Build System,Cobalt binary execution,Custom testing frameworks,Chrome DevTools,Cobalt Web Debugging,cobalt.exe,.cbl, .cob,COBOL_HOME
+Ruby,Ruby SDK,Bundler, RubyGems,Rake, ruby,ruby,RSpec, Minitest,Pry, RubyMine Debugger,ruby-prof, stackprof,ruby.exe,.rb, .erb, .gem,GEM_HOME, RUBY_VERSION
+R,R SDK,CRAN, Bioconductor,R CMD build,Rscript,testthat,RStudio Debugger,profvis, Rprof,R.exe,.R, .Rdata, .rds,R_LIBS, R_HOME

@@ -1,0 +1,59 @@
+// Retrieve process execution data from UberAgent logs in ADX
+UberAgentProcessData
+| where Timestamp > ago(24h)  // Filter last 24 hours of activity
+| where ProcessName in ("java.exe", "python.exe", "dotnet.exe", "node.exe", "go.exe", "cobalt.exe", "ruby.exe", "R.exe") 
+| summarize ProcessCount = count() by DeviceName, UserName, ProcessName
+
+// Join with file associations to enhance identification
+| join kind=inner (
+    UberAgentFileAccessData
+    | where FileExtension in (".java", ".py", ".cs", ".js", ".go", ".cbl", ".rb", ".R")
+    | summarize AccessCount = count() by DeviceName, UserName, FileExtension
+) on DeviceName, UserName
+
+// Include environment variables to refine language classification
+| join kind=inner (
+    UberAgentEnvironmentData
+    | where VariableName in ("JAVA_HOME", "PYTHONPATH", "DOTNET_ROOT", "NODE_PATH", "GOPATH", "COBOL_HOME", "GEM_HOME", "R_LIBS")
+) on DeviceName, UserName
+
+// Output the most used development language per user
+| summarize TotalActivity = sum(ProcessCount + AccessCount) by DeviceName, UserName, ProcessName
+| order by TotalActivity desc
+
+UberAgentProcessData
+| where Timestamp > ago(7d)  // Analyze past week's activity
+| where ProcessName in ("java.exe", "python.exe", "dotnet.exe", "node.exe", "go.exe", "ruby.exe", "R.exe") 
+| summarize TotalRunTime = sum(Duration), ExecutionCount = count() by DeviceName, UserName, ProcessName
+| where TotalRunTime > 600 and ExecutionCount > 50  // Filter frequent, long-running sessions
+
+// Correlate with IDE usage
+| join kind=inner (
+    UberAgentProcessData
+    | where ProcessName in ("code.exe", "pycharm.exe", "intellij.exe", "rubymine.exe", "rstudio.exe")
+    | summarize IDEUsageCount = count() by DeviceName, UserName
+) on DeviceName, UserName
+
+// Include terminal usage
+| join kind=inner (
+    UberAgentProcessData
+    | where ProcessName in ("cmd.exe", "powershell.exe", "bash.exe")
+    | summarize TerminalCommandsExecuted = count() by DeviceName, UserName
+) on DeviceName, UserName
+
+// File interaction tracking
+| join kind=inner (
+    UberAgentFileAccessData
+    | where FileExtension in (".java", ".py", ".cs", ".js", ".go", ".rb", ".R")
+    | summarize FileEditCount = count() by DeviceName, UserName
+) on DeviceName, UserName
+
+// Environment variables profiling
+| join kind=inner (
+    UberAgentEnvironmentData
+    | where VariableName in ("JAVA_HOME", "PYTHONPATH", "DOTNET_ROOT", "NODE_PATH", "GOPATH", "R_LIBS")
+) on DeviceName, UserName
+
+// Final profiling based on all weighted factors
+| extend DevelopmentScore = (ExecutionCount + IDEUsageCount + TerminalCommandsExecuted + FileEditCount) * TotalRunTime
+| order by DevelopmentScore desc

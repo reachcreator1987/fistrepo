@@ -1,0 +1,38 @@
+// Identify frequently used programming languages by analyzing execution time & frequency
+UberAgentProcessData
+| where Timestamp > ago(14d)  // Analyze past 14 days of activity
+| where ProcessName in ("java.exe", "python.exe", "dotnet.exe", "node.exe", "go.exe", "ruby.exe", "R.exe") 
+| summarize TotalRunTime = sum(Duration), ExecutionCount = count() by DeviceName, UserName, ProcessName
+| where TotalRunTime > 600 and ExecutionCount > 50  // Ensure significant usage
+
+// Identify associated IDE usage
+| join kind=inner (
+    UberAgentProcessData
+    | where ProcessName in ("code.exe", "pycharm.exe", "intellij.exe", "rubymine.exe", "rstudio.exe", "eclipse.exe", "netbeans.exe", "vim.exe")
+    | summarize IDEUsageCount = count() by DeviceName, UserName
+) on DeviceName, UserName
+
+// Analyze frequent file modifications to determine language focus
+| join kind=inner (
+    UberAgentFileAccessData
+    | where FileExtension in (".java", ".py", ".cs", ".js", ".go", ".rb", ".R")
+    | summarize FileEditCount = count(), TopCodebaseLocation = arg_max(FilePath, FileEditCount) by DeviceName, UserName
+) on DeviceName, UserName
+
+// Include Git repository interactions to determine active development
+| join kind=inner (
+    UberAgentFileAccessData
+    | where FilePath contains ".git"
+    | summarize GitActivityCount = count() by DeviceName, UserName
+) on DeviceName, UserName
+
+// Correlate environment variables for further confirmation
+| join kind=inner (
+    UberAgentEnvironmentData
+    | where VariableName in ("JAVA_HOME", "PYTHONPATH", "DOTNET_ROOT", "NODE_PATH", "GOPATH", "R_LIBS")
+) on DeviceName, UserName
+
+// Compute overall development score based on weighted engagement factors
+| extend DevelopmentScore = (ExecutionCount + IDEUsageCount + FileEditCount + GitActivityCount) * TotalRunTime
+| order by DevelopmentScore desc
+| project DeviceName, UserName, ProcessName as LanguageUsed, TopCodebaseLocation, DevelopmentScore
